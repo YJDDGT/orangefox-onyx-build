@@ -2,7 +2,8 @@
 # OrangeFox Recovery
 
 # Inherit common OrangeFox/TWRP configuration
-$(call inherit-product, vendor/twrp/config/common.mk)
+# OrangeFox 14.1 uses vendor/orangefox/config/common.mk
+$(call inherit-product, vendor/orangefox/config/common.mk)
 
 # Inherit Virtual A/B OTA compression
 $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/compression.mk)
