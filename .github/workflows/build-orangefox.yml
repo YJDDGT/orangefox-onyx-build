@@ -47,8 +47,9 @@ jobs:
       - name: Install build dependencies
         run: |
           # Use OrangeFox official setup script
-          git clone https://gitlab.com/OrangeFox/misc/scripts
-          cd scripts
+          # Clone to 'of_scripts' to avoid conflict with repo's own scripts/ directory
+          git clone https://gitlab.com/OrangeFox/misc/scripts of_scripts
+          cd of_scripts
           sudo bash setup/android_build_env.sh
           cd ..
           # Additional tools
