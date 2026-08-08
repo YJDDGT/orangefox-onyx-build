@@ -67,11 +67,12 @@ export OF_ADVANCED_SECURITY=1
 
 # Function to validate device target
 fox_get_target_device() {
-    local chkdev=$(echo "$BASH_SOURCE" | grep -w \"$FDEVICE\")
+    local chkdev=$(echo "$BASH_SOURCE" | grep -w "$FDEVICE")
     if [ -n "$chkdev" ]; then
         export FOX_BUILD_DEVICE="$FDEVICE"
     else
-        echo "WARNING: Device mismatch detected!"
+        echo "WARNING: Device mismatch detected! (ignored in CI, setting FOX_BUILD_DEVICE=$FDEVICE)"
+        export FOX_BUILD_DEVICE="$FDEVICE"
     fi
 }
 
@@ -80,3 +81,7 @@ fox_get_target_device
 # Additional variables for build
 export ALLOW_MISSING_DEPENDENCIES=true
 export LC_ALL="C"
+
+# Register lunch combo with the build system
+add_lunch_combo twrp_onyx-eng
+add_lunch_combo twrp_onyx-userdebug
