@@ -1,0 +1,9 @@
+# WorkBuddy project memory (local only)
+.workbuddy/
+
+# Build output
+output/
+orangefox/out/
+
+# Proprietary blobs (don't commit vendor binaries)
+vendor-blobs/
