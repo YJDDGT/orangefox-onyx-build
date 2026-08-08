@@ -42,6 +42,7 @@ if [ "$FOX_BUILD_DEVICE" = "$FDEVICE" ]; then
 # https://gitlab.com/OrangeFox/bootable/Recovery/-/raw/fox_14.1/orangefox.mk
 	export FOX_VIRTUAL_AB_DEVICE=1
 	export FOX_VANILLA_BUILD=1
+	export FOX_USE_MISANS_FONTS=1
 	export FOX_RECOVERY_SYSTEM_PARTITION="/dev/block/mapper/system"
 	export FOX_RECOVERY_VENDOR_PARTITION="/dev/block/mapper/vendor"
 	export FOX_USE_BASH_SHELL=1
