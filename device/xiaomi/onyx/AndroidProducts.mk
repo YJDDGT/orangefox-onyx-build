@@ -18,5 +18,5 @@ PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/omni_onyx.mk
 
 COMMON_LUNCH_CHOICES := \
-    twrp_onyx-eng \
-    twrp_onyx-userdebug
+    twrp_onyx-ap3a-eng \
+    twrp_onyx-ap3a-userdebug
