@@ -1,0 +1,111 @@
+# ============================================================
+# 从 Recovery 中读取的设备配置
+# Redmi Turbo 4 Pro (onyx) - OrangeFox R12.1
+# 读取时间: 2026-08-08
+# ============================================================
+
+device:
+  manufacturer: Xiaomi
+  model: Redmi Turbo 4 Pro
+  codename: onyx
+  build_product: fox_onyx
+
+hardware:
+  soc: Qualcomm SM8735 (Snapdragon 8s Gen 3)
+  platform: xiaomi_sm8735
+  machine: TUNA
+  soc_id: 655
+  cpu:
+    arch: arm64-v8a
+    cores: 8
+    variants: [0xd81, 0xd82]  # Cortex-A510 + Cortex-A7xx
+  display:
+    panel: qcom,mdss_dsi_o10u_42_02_0a_dsc_vid
+    cell_id: AU6557202RA11
+    vendor: AUO
+    resolution: "2400+x"  # need exact resolution from device tree
+  memory:
+    total: ~15.5 GB (based on tmpfs size)
+
+android:
+  version: "15"
+  sdk: 34
+  incremental: OS3.0.303.0.WOLCNXM
+  fingerprint: "Xiaomi/mivendor/mivendor:15/AQ3A.250226.002/OS3.0.303.0.WOLCNXM:user/release-keys"
+  rom_base: BP2A.250605.031.A3
+  security_patch: "2026-03-01"
+
+kernel:
+  version: "6.6.77-android15-8-g4a507830d890-ab13636293-4k"
+  compiler: "clang 18.0.0 (r510928)"
+  build_date: "2025-06-12"
+  features:
+    - PREEMPT
+    - LTO
+    - PGO
+    - BOLT
+    - MLGO
+
+recovery:
+  type: OrangeFox
+  version: "R12.1 (99.87.36)"
+  codebase: "2026-06-12 (60270255)"
+  fox_id: "01de26d2-f85b-4337-8601-f19bffc84054"
+  build_date: "2026-06-11"
+  builder: ireddragonicy
+  build_host: ndiklinuxpc
+  build_path: "/home/ireddragonicy/Data/projects/orangefox-xiaomi-onyx/orangefox_build"
+  features:
+    - bash
+    - busybox
+    - magiskboot
+    - ksud (KernelSU)
+    - nano
+    - resetprop
+    - SYSTEM_ROOT=1
+    - PROPER_SAR=1
+    - ADB (secure disabled)
+
+partition:
+  scheme: A/B with Virtual A/B
+  ab_update: true
+  dynamic_partitions: true
+  super_partition: /dev/block/sda33 (11 GB)
+  userdata: /dev/block/sda34 (~480 GB)
+  recovery_size: 102400 blocks (100 MB each slot)
+  key_partitions:
+    boot:         "/dev/block/sde14 (a) / sde47 (b)"
+    recovery:     "/dev/block/sde27 (a) / sde59 (b)"
+    dtbo:         "/dev/block/sde18 (a) / sde51 (b)"
+    vbmeta:       "/dev/block/sde17 (a) / sde50 (b)"
+    vendor_boot:  "/dev/block/sde24 (a) / sde57 (b)"
+    init_boot:    "/dev/block/sde29 (a) / sde61 (b)"
+
+filesystem:
+  system:    erofs (ro)
+  vendor:    erofs (ro)
+  product:   erofs (ro)
+  odm:       erofs (ro)
+  system_ext: erofs (ro)
+  system_dlkm: erofs (ro)
+  vendor_dlkm: erofs (ro)
+  mi_ext:    erofs (ro)
+  data:      f2fs (rw, inlinecrypt)
+  metadata:  f2fs (rw)
+  cache:     ext4 (rw)
+  persist:   ext4 (rw)
+  firmware:  vfat (ro)
+  bluetooth: vfat (ro)
+  dsp:       ext4 (rw)
+
+# OrangeFox build flags
+fox_build_flags:
+  OF_AB_DEVICE: 1
+  OF_VIRTUAL_AB_DEVICE: 1
+  OF_DYNAMIC_PARTITIONS: 1
+  OF_USE_MAGISKBOOT: 1
+  OF_USE_MAGISKBOOT_FOR_ALL_PATCHES: 1
+  OF_USE_GREEN_LED: 0
+  OF_FLASHLIGHT_ENABLE: 0
+  OF_SCREEN_H: 2400
+  FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER: 1
