@@ -55,13 +55,13 @@ jobs:
           cd ..
           # Additional tools
           sudo apt install -y -qq ccache lz4 xz-utils zstd
-          # Configure ccache (use workspace dir — $HOME may be read-only after disk cleanup)
-          export CCACHE_DIR="${{ github.workspace }}/.ccache"
+          # Configure ccache (use /tmp — workspace is read-only in AOSP 14+ build)
+          export CCACHE_DIR="/tmp/ccache"
           mkdir -p "$CCACHE_DIR"
           ccache -M 20G
           ccache -o compression=true
           echo "USE_CCACHE=1" >> $GITHUB_ENV
-          echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
+          echo "CCACHE_DIR=/tmp/ccache" >> $GITHUB_ENV
 
       # ============================================================
       # Step 3: Sync OrangeFox sources via official sync script
@@ -116,7 +116,7 @@ jobs:
           export OF_USE_LZ4_COMPRESSION=1
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
-          export CCACHE_DIR="${{ github.workspace }}/.ccache"
+          export CCACHE_DIR="/tmp/ccache"
 
           echo "=== System state ==="
           df -h /
