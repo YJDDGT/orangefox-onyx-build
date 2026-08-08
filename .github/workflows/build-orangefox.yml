@@ -104,15 +104,14 @@ jobs:
           cd ${{ github.workspace }}/orangefox
 
           echo "=== Setting up build environment ==="
-          source build/envsetup.sh
 
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
 
-          # Source device-specific config
-          source device/xiaomi/onyx/vendorsetup.sh
+          # Source device config VIA envsetup (envsetup.sh auto-sources all vendorsetup.sh)
+          source build/envsetup.sh
 
           # Clean build if requested
           if [ "${{ github.event.inputs.clean_build }}" = "true" ]; then
