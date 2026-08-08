@@ -15,7 +15,7 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_onyx.mk
+    $(LOCAL_DIR)/twrp_onyx.mk
 
 COMMON_LUNCH_CHOICES := \
     twrp_onyx-ap2a-eng \
