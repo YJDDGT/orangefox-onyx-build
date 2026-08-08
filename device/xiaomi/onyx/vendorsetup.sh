@@ -81,7 +81,3 @@ fox_get_target_device
 # Additional variables for build
 export ALLOW_MISSING_DEPENDENCIES=true
 export LC_ALL="C"
-
-# Register lunch combo with the build system
-add_lunch_combo twrp_onyx-eng
-add_lunch_combo twrp_onyx-userdebug
