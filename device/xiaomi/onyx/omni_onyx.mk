@@ -1,12 +1,5 @@
 # Product definition for Redmi Turbo 4 Pro (onyx)
-# OrangeFox Recovery
-
-# Inherit common OrangeFox/TWRP configuration (auto-detect path)
-$(if $(wildcard vendor/orangefox/config/common.mk),$(call inherit-product, vendor/orangefox/config/common.mk))
-$(if $(wildcard vendor/twrp/config/common.mk),$(call inherit-product, vendor/twrp/config/common.mk))
-
-# Inherit Virtual A/B OTA compression
-$(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/compression.mk)
+# OrangeFox Recovery - self-contained (no external inherit)
 
 # Device
 PRODUCT_DEVICE := onyx
