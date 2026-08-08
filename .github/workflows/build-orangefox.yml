@@ -135,8 +135,8 @@ jobs:
             make clobber || true
           fi
 
-          echo "=== Lunch: twrp_${{ env.DEVICE }}-eng ==="
-          lunch "twrp_${{ env.DEVICE }}-eng"
+          echo "=== Lunch: twrp_${{ env.DEVICE }}-ap2a-eng ==="
+          lunch "twrp_${{ env.DEVICE }}-ap2a-eng"
 
           echo "=== Building recoveryimage ==="
           echo "CPU cores: $(nproc --all)"
