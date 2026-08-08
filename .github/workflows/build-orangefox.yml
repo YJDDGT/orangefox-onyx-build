@@ -2,277 +2,168 @@ name: Build OrangeFox Recovery - onyx
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
+    paths:
+      - 'device/**'
+      - 'vendor/**'
+      - '.github/workflows/build-orangefox.yml'
   workflow_dispatch:
     inputs:
-      device_tree_url:
-        description: 'Device tree Git URL'
-        required: true
-        default: 'https://gitlab.com/OrangeFox/device/xiaomi/onyx.git'
-      device_tree_branch:
-        description: 'Device tree branch'
-        required: false
-        default: 'fox_12.1'
       clean_build:
-        description: 'Clean build (clobber)'
+        description: 'Clean build'
         type: boolean
         default: false
 
 env:
-  MANIFEST_URL: https://gitlab.com/OrangeFox/Manifest.git
-  MANIFEST_BRANCH: fox_12.1
-  DEVICE_CODENAME: onyx
-  BUILD_FLAVOR: fox_onyx-eng
-  BUILD_TARGET: recoveryimage
-  MAKEFLAGS: -j$(nproc --all)
+  DEVICE: onyx
+  OF_BRANCH: 12.1
 
 jobs:
   build:
-    name: Build OrangeFox for onyx
-    runs-on: ubuntu-22.04
+    name: Build OFRP for onyx
+    runs-on: ubuntu-latest
 
     steps:
       # ============================================================
-      # Step 1: Prepare build environment
+      # Step 0: Checkout this repo (device tree + vendor)
       # ============================================================
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # ============================================================
+      # Step 1: Free disk space and add swap
+      # ============================================================
+      - name: Clean up disk space
+        uses: rokibhasansagar/slimhub_actions@main
+
+      - name: Set up swap space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 16
+
+      # ============================================================
+      # Step 2: Install build dependencies
+      # ============================================================
       - name: Install build dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            git git-lfs repo curl wget nano unzip zip lz4 xz-utils zstd \
-            python3 python3-pip python3-venv \
-            gperf gcc-multilib g++-multilib libc6-dev-i386 \
-            lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev \
-            libgl1-mesa-dev libxml2-utils xsltproc \
-            libssl-dev liblz4-tool libncurses5 libncurses5-dev \
-            libsdl1.2-dev libwxgtk3.0-gtk3-dev libtinfo5 \
-            bc bison build-essential flex fontconfig imagemagick \
-            schedtool squashfs-tools pngcrush rsync \
-            openjdk-17-jdk openjdk-17-jre-headless
-          # Install git-lfs
-          git lfs install
-          # Set up repo tool
-          sudo curl --create-dirs -L -o /usr/local/bin/repo \
-            https://storage.googleapis.com/git-repo-downloads/repo
-          sudo chmod a+x /usr/local/bin/repo
-          # Use Java 17
-          sudo update-java-alternatives -s java-1.17.0-openjdk-amd64 2>/dev/null || true
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+          # Use OrangeFox official setup script
+          git clone https://gitlab.com/OrangeFox/misc/scripts
+          cd scripts
+          sudo bash setup/android_build_env.sh
+          cd ..
+          # Additional tools
+          sudo apt install -y -qq ccache lz4 xz-utils zstd
+          # Configure ccache
+          ccache -M 20G
+          ccache -o compression=true
+          echo "USE_CCACHE=1" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       # ============================================================
-      # Step 2: Configure Git identity
-      # ============================================================
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git config --global color.ui false
-
-      # ============================================================
-      # Step 3: Sync OrangeFox sources
+      # Step 3: Sync OrangeFox sources via official sync script
       # ============================================================
       - name: Sync OrangeFox sources
         run: |
-          mkdir -p ${{ github.workspace }}/orangefox
-          cd ${{ github.workspace }}/orangefox
-          repo init --depth=1 --no-repo-verify \
-            -u ${{ env.MANIFEST_URL }} \
-            -b ${{ env.MANIFEST_BRANCH }} \
-            -g default,-mips,-darwin,-notdefault
-          echo "Repo initialized successfully"
-          repo sync -c --no-clone-bundle --no-tags --optimized-fetch \
-            --prune --force-sync -j$(nproc --all)
-          echo "Source sync completed"
+          set -e
+          echo "=== Cloning OrangeFox sync tool ==="
+          git clone https://gitlab.com/OrangeFox/sync.git
+
+          echo "=== Syncing OrangeFox ${{ env.OF_BRANCH }} sources ==="
+          cd sync
+          ./orangefox_sync.sh --branch ${{ env.OF_BRANCH }} --path ${{ github.workspace }}/orangefox
+
+          echo "=== Sync complete ==="
+          echo "Source tree size:"
+          du -sh ${{ github.workspace }}/orangefox/ 2>/dev/null || true
+          echo "Available disk:"
+          df -h / 2>/dev/null || true
 
       # ============================================================
-      # Step 4: Clone device tree & kernel source
+      # Step 4: Install device tree from this repo
       # ============================================================
-      - name: Clone device tree
+      - name: Install device tree
         run: |
-          cd ${{ github.workspace }}/orangefox
+          set -e
+          echo "=== Copying device tree for onyx ==="
+          mkdir -p ${{ github.workspace }}/orangefox/device/xiaomi
+          cp -r ${{ github.workspace }}/device/xiaomi/onyx \
+                ${{ github.workspace }}/orangefox/device/xiaomi/onyx
 
-          # Device tree
-          if [ -n "${{ github.event.inputs.device_tree_url }}" ]; then
-            DT_URL="${{ github.event.inputs.device_tree_url }}"
-          else
-            DT_URL="https://gitlab.com/OrangeFox/device/xiaomi/onyx.git"
-          fi
-
-          if [ -n "${{ github.event.inputs.device_tree_branch }}" ]; then
-            DT_BRANCH="${{ github.event.inputs.device_tree_branch }}"
-          else
-            DT_BRANCH="fox_12.1"
-          fi
-
-          echo "Cloning device tree from: $DT_URL (branch: $DT_BRANCH)"
-          mkdir -p device/xiaomi/onyx
-          git clone --depth=1 -b "$DT_BRANCH" "$DT_URL" device/xiaomi/onyx 2>/dev/null || \
-          git clone --depth=1 "$DT_URL" device/xiaomi/onyx 2>/dev/null || \
-          echo "WARNING: Could not clone device tree. Using local if exists."
-
-          # List what we got
-          echo "=== Device tree contents ==="
-          ls -la device/xiaomi/onyx/ 2>/dev/null || echo "(device tree not found - will use repo defaults)"
+          echo "Device tree installed:"
+          ls -la ${{ github.workspace }}/orangefox/device/xiaomi/onyx/
+          echo "Prebuilt kernel check:"
+          ls -lh ${{ github.workspace }}/orangefox/device/xiaomi/onyx/prebuilt/
 
       # ============================================================
-      # Step 5: Clone vendor blobs (proprietary)
+      # Step 5: Build OrangeFox Recovery
       # ============================================================
-      - name: Clone vendor blobs
+      - name: Build OrangeFox
         run: |
+          set -e
           cd ${{ github.workspace }}/orangefox
 
-          # Try multiple common vendor repos
-          VENDOR_CLONED=false
-
-          for VENDOR_URL in \
-            "https://gitlab.com/OrangeFox/vendor/xiaomi/onyx.git" \
-            "https://github.com/irdragonicy/vendor_xiaomi_onyx.git"; do
-            if git ls-remote --exit-code "$VENDOR_URL" &>/dev/null; then
-              echo "Cloning vendor from: $VENDOR_URL"
-              mkdir -p vendor/xiaomi/onyx
-              git clone --depth=1 "$VENDOR_URL" vendor/xiaomi/onyx
-              VENDOR_CLONED=true
-              break
-            fi
-          done
-
-          if [ "$VENDOR_CLONED" = false ]; then
-            echo "WARNING: No vendor blobs found online."
-            echo "You need to extract them from stock ROM or the device."
-            echo "Use the extract-files.sh script from device tree, or"
-            echo "run the extraction locally with: ./scripts/extract-blobs.sh"
-          fi
-
-      # ============================================================
-      # Step 6: Set up build environment
-      # ============================================================
-      - name: Setup build environment
-        run: |
-          cd ${{ github.workspace }}/orangefox
+          echo "=== Setting up build environment ==="
           source build/envsetup.sh
-          
-          # Accept all licenses
+
           export ALLOW_MISSING_DEPENDENCIES=true
-          
-          # Set up ccache for faster rebuilds
+          export LC_ALL="C"
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
-          ccache -M 20G
-          ccache -o compression=true
-          
-          echo "Build environment ready"
 
-      # ============================================================
-      # Step 7: Build OrangeFox Recovery
-      # ============================================================
-      - name: Build Recovery
-        run: |
-          cd ${{ github.workspace }}/orangefox
-          source build/envsetup.sh
+          # Source device-specific config
+          source device/xiaomi/onyx/vendorsetup.sh
 
           # Clean build if requested
           if [ "${{ github.event.inputs.clean_build }}" = "true" ]; then
-            echo "Performing clean build..."
+            echo "=== Performing clean build ==="
             make clobber
           fi
 
-          export ALLOW_MISSING_DEPENDENCIES=true
-          export USE_CCACHE=1
-          export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
-          export OF_USE_MAGISKBOOT=1
-          export OF_USE_MAGISKBOOT_FOR_ALL_PATCHES=1
-          
-          # Device-specific flags (Redmi Turbo 4 Pro - onyx)
-          export OF_AB_DEVICE=1
-          export OF_VIRTUAL_AB_DEVICE=1
-          export OF_DYNAMIC_PARTITIONS=1
-          export OF_USE_GREEN_LED=0
-          export OF_FLASHLIGHT_ENABLE=0
-          export OF_SCREEN_H=2400
-          export OF_STATUS_H=120
-          export OF_STATUS_INDENT_LEFT=60
-          export OF_STATUS_INDENT_RIGHT=60
-          export OF_CLOCK_POS=1
+          echo "=== Lunch: twrp_${{ env.DEVICE }}-eng ==="
+          lunch twrp_${{ env.DEVICE }}-eng
 
-          echo "=== Starting build ==="
-          echo "Target: ${{ env.BUILD_FLAVOR }}"
-          echo "Target image: ${{ env.BUILD_TARGET }}"
-          echo "Job count: $(nproc --all)"
+          echo "=== Building recoveryimage ==="
+          echo "CPU cores: $(nproc --all)"
+          mka adbd recoveryimage -j$(nproc --all)
 
-          lunch ${{ env.BUILD_FLAVOR }} || lunch twrp_${{ env.DEVICE_CODENAME }}-eng || lunch omni_${{ env.DEVICE_CODENAME }}-eng
-          mka ${{ env.BUILD_TARGET }} -j$(nproc --all)
+          echo "=== Build complete! ==="
+          echo "Output files:"
+          ls -lh out/target/product/${{ env.DEVICE }}/recovery.img 2>/dev/null || echo "(recovery.img not found)"
+          ls -lh out/target/product/${{ env.DEVICE }}/OrangeFox*.zip 2>/dev/null || echo "(OrangeFox zip not found)"
+          ls -lh out/target/product/${{ env.DEVICE }}/*.img 2>/dev/null || echo "(no images found)"
 
       # ============================================================
-      # Step 8: Collect and verify build artifacts
+      # Step 6: Upload build artifacts
       # ============================================================
-      - name: Collect build artifacts
-        if: always()
-        run: |
-          cd ${{ github.workspace }}/orangefox
-          mkdir -p ${{ github.workspace }}/output
-
-          # Find recovery image
-          find out/target/product/onyx/ -maxdepth 1 -name "recovery.img" \
-            -exec cp {} ${{ github.workspace }}/output/recovery.img \; 2>/dev/null || true
-
-          # Also check for OrangeFox zip
-          find out/target/product/onyx/ -maxdepth 1 -name "OrangeFox*.zip" \
-            -exec cp {} ${{ github.workspace }}/output/ \; 2>/dev/null || true
-
-          # Get build info
-          echo "=== Build artifacts ==="
-          ls -lh ${{ github.workspace }}/output/ 2>/dev/null || echo "(no artifacts found)"
-
-          # Generate build info
-          cat > ${{ github.workspace }}/output/build-info.txt << EOF
-          Device: Redmi Turbo 4 Pro (onyx)
-          Recovery: OrangeFox R12.1
-          Build date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          Build ID: ${{ github.run_id }}
-          Commit SHA: ${{ github.sha }}
-          Manifest: ${{ env.MANIFEST_URL }} (${{ env.MANIFEST_BRANCH }})
-          Build target: ${{ env.BUILD_FLAVOR }}
-          EOF
-
-      # ============================================================
-      # Step 9: Upload build artifacts
-      # ============================================================
-      - name: Upload recovery image
+      - name: Upload OrangeFox artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-onyx-${{ github.run_id }}
-          path: ${{ github.workspace }}/output/*
+          name: OrangeFox-onyx-R12.1
+          path: |
+            orangefox/out/target/product/onyx/recovery.img
+            orangefox/out/target/product/onyx/OrangeFox*.zip
+            orangefox/out/target/product/onyx/boot.img
           retention-days: 30
-          compression-level: 9
+          if-no-files-found: ignore
 
       # ============================================================
-      # Step 10: Generate build summary
+      # Step 7: Build summary
       # ============================================================
       - name: Build summary
         if: always()
         run: |
-          echo "### 🦊 OrangeFox Recovery Build for onyx" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Device | Redmi Turbo 4 Pro (onyx) |" >> $GITHUB_STEP_SUMMARY
-          echo "| SOC | Qualcomm SM8735 (Snapdragon 8s Gen 3) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Recovery version | OrangeFox R12.1 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build run | #${{ github.run_id }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Kernel | 6.6.77 |" >> $GITHUB_STEP_SUMMARY
-          echo "| A/B device | Yes (Virtual A/B) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dynamic partitions | Yes (super) |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📥 Download the artifact from the **Actions** tab → this run → Artifacts section." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### 🦊 OrangeFox R12.1 | onyx (Redmi Turbo 4 Pro)"
+            echo ""
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| Build | #${{ github.run_id }} |"
+            echo "| SOC | Qualcomm SM8735 (Snapdragon 8s Gen 3) |"
+            echo "| Kernel | 6.6.77 (prebuilt from device) |"
+            echo "| A/B | Virtual A/B, dedicated recovery partition |"
+            echo "| Filesystem | EROFS + F2FS + EXT4 |"
+            echo "| Dynamic partitions | Yes (super, 11GB) |"
+            echo ""
+            echo "Download: **Actions** tab → this run → Artifacts section"
+          } >> $GITHUB_STEP_SUMMARY
