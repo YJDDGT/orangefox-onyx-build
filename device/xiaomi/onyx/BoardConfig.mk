@@ -55,8 +55,8 @@ AB_OTA_PARTITIONS += \
     vbmeta \
     vbmeta_system
 
-# Recovery partition
-BOARD_USES_RECOVERY_AS_BOOT :=
+# Recovery partition (dedicated, not recovery-as-boot)
+BOARD_USES_RECOVERY_AS_BOOT := false
 BOARD_HAS_NO_REAL_SDCARD := true
 RECOVERY_SDCARD_ON_DATA := true
 

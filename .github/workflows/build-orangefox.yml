@@ -16,12 +16,13 @@ on:
 
 env:
   DEVICE: onyx
-  OF_BRANCH: 12.1
+  OF_BRANCH: 14.1
 
 jobs:
   build:
     name: Build OFRP for onyx
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
 
     steps:
       # ============================================================
@@ -101,32 +102,48 @@ jobs:
       - name: Build OrangeFox
         run: |
           set -e
-          cd ${{ github.workspace }}/orangefox
+          SOURCE_DIR="${{ github.workspace }}/orangefox"
+          cd "$SOURCE_DIR"
 
           echo "=== Setting up build environment ==="
 
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL="C"
+          export FOX_BUILD_DEVICE="${{ env.DEVICE }}"
+          export FOX_BUILD_TYPE="Alpha"
+          export OF_USE_LZ4_COMPRESSION=1
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
+          export CCACHE_DIR="$HOME/.ccache"
 
-          # Source device config VIA envsetup (envsetup.sh auto-sources all vendorsetup.sh)
-          source build/envsetup.sh
+          echo "=== System state ==="
+          df -h /
+          free -h
+
+          echo "=== Initializing build environment ==="
+          set +e
+          source build/envsetup.sh 2>&1
+          ENVSETUP_EXIT=$?
+          set -e
+          if [ $ENVSETUP_EXIT -ne 0 ]; then
+            echo "WARN: envsetup.sh exit code: $ENVSETUP_EXIT (non-fatal, continuing)"
+          fi
 
           # Clean build if requested
           if [ "${{ github.event.inputs.clean_build }}" = "true" ]; then
             echo "=== Performing clean build ==="
-            make clobber
+            make clobber || true
           fi
 
           echo "=== Lunch: twrp_${{ env.DEVICE }}-eng ==="
-          lunch twrp_${{ env.DEVICE }}-eng
+          lunch "twrp_${{ env.DEVICE }}-eng"
 
           echo "=== Building recoveryimage ==="
           echo "CPU cores: $(nproc --all)"
-          mka adbd recoveryimage -j$(nproc --all)
+          mka recoveryimage -j"$(nproc --all)"
 
           echo "=== Build complete! ==="
+          ccache -s 2>/dev/null || true
           echo "Output files:"
           ls -lh out/target/product/${{ env.DEVICE }}/recovery.img 2>/dev/null || echo "(recovery.img not found)"
           ls -lh out/target/product/${{ env.DEVICE }}/OrangeFox*.zip 2>/dev/null || echo "(OrangeFox zip not found)"
