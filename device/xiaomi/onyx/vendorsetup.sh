@@ -1,83 +1,75 @@
-#!/bin/bash
-# OrangeFox build configuration for Redmi Turbo 4 Pro (onyx)
+#
+#	This file is part of the OrangeFox Recovery Project
+# 	Copyright (C) 2025 The OrangeFox Recovery Project
+#
+#	OrangeFox is free software: you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation, either version 3 of the License, or
+#	any later version.
+#
+#	OrangeFox is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+# 	This software is released under GPL version 3 or any later version.
+#	See <http://www.gnu.org/licenses/>.
+#
+# 	Please maintain this if you use this script or any part of it
+#
 
-# Device identification
-export FDEVICE="onyx"
-export FOX_VARIANT="RedmiTurbo4Pro"
+#set -o xtrace
+FDEVICE="onyx"
 
-# A/B device with dedicated recovery partition
-export FOX_AB_DEVICE=1
-export OF_AB_DEVICE_WITH_RECOVERY_PARTITION=1
-
-# Virtual A/B device
-export FOX_VIRTUAL_AB_DEVICE=1
-
-# Dynamic partitions (super)
-export OF_DYNAMIC_PARTITIONS=1
-# super partition size (11 GB reported from partitions)
-export OF_DYNAMIC_FULL_SIZE=11534336
-
-# Build tools
-export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
-export FOX_USE_TAR_BINARY=1
-export FOX_USE_XZ_UTILS=1
-export FOX_USE_LZ4_BINARY=1
-export FOX_USE_ZSTD_BINARY=1
-export FOX_USE_NANO_EDITOR=1
-export FOX_USE_BASH_SHELL=1
-export FOX_USE_GREP_BINARY=1
-
-# Magisk support
-export OF_USE_MAGISKBOOT=1
-export OF_USE_MAGISKBOOT_FOR_ALL_PATCHES=1
-
-# KernelSU support  
-export FOX_ENABLE_KERNEL_SU=1
-
-# Prebuilt kernel
-export OF_FORCE_PREBUILT_KERNEL=1
-
-# Display settings
-export OF_SCREEN_H=2400
-export OF_STATUS_H=120
-export OF_STATUS_INDENT_LEFT=60
-export OF_STATUS_INDENT_RIGHT=60
-export OF_CLOCK_POS=1
-
-# No flashlight / LED
-export OF_USE_GREEN_LED=0
-export OF_FLASHLIGHT_ENABLE=0
-
-# Encryption
-export OF_DEFAULT_KEYMASTER_VERSION=4.1
-export OF_ENABLE_FBE_METADATA_ENCRYPTION=1
-
-# Filesystem / EROFS support
-export OF_SUPPORT_EROFS=1
-export OF_SUPPORT_ALL_BLOCK_DEVICES=1
-
-# MIUI specific - device is MIUI/HyperOS based
-export OF_PATCH_AVB20=1
-
-# ADB
-export OF_ADVANCED_SECURITY=1
-
-# Use LZMA compression if size is too big
-# export OF_USE_LZMA_COMPRESSION=1
-
-# Function to validate device target
 fox_get_target_device() {
-    local chkdev=$(echo "$BASH_SOURCE" | grep -w "$FDEVICE")
-    if [ -n "$chkdev" ]; then
-        export FOX_BUILD_DEVICE="$FDEVICE"
-    else
-        echo "WARNING: Device mismatch detected! (ignored in CI, setting FOX_BUILD_DEVICE=$FDEVICE)"
-        export FOX_BUILD_DEVICE="$FDEVICE"
-    fi
+	local script_path="${BASH_SOURCE[0]}"
+	if echo "$script_path" | grep -q "$FDEVICE"; then
+		FOX_BUILD_DEVICE="$FDEVICE"
+	elif echo "$0" | grep -q "$FDEVICE"; then
+		FOX_BUILD_DEVICE="$FDEVICE"
+	fi
 }
 
-fox_get_target_device
+if [ -z "$FOX_BUILD_DEVICE" ]; then
+	fox_get_target_device
+fi
 
-# Additional variables for build
-export ALLOW_MISSING_DEPENDENCIES=true
-export LC_ALL="C"
+if [ "$FOX_BUILD_DEVICE" = "$FDEVICE" ]; then
+	echo "Detected build device: $FOX_BUILD_DEVICE"
+
+# Review build flags with below links:
+# https://gitlab.com/OrangeFox/vendor/recovery/-/raw/fox_14.1/orangefox_build_vars.txt
+# https://gitlab.com/OrangeFox/bootable/Recovery/-/raw/fox_14.1/orangefox.mk
+	export FOX_VIRTUAL_AB_DEVICE=1
+	export FOX_VANILLA_BUILD=1
+	export FOX_RECOVERY_SYSTEM_PARTITION="/dev/block/mapper/system"
+	export FOX_RECOVERY_VENDOR_PARTITION="/dev/block/mapper/vendor"
+	export FOX_USE_BASH_SHELL=1
+	export FOX_USE_NANO_EDITOR=1
+	export FOX_DELETE_AROMAFM=1
+	export FOX_REMOVE_AAPT=1
+	export FOX_DELETE_MAGISK_ADDON=1
+	export FOX_ENABLE_KERNELSU_SUPPORT=1
+	export FOX_ENABLE_KERNELSU_NEXT_SUPPORT=1
+	export FOX_ENABLE_SUKISU_SUPPORT=1
+	export FOX_USE_BUSYBOX_BINARY=1
+	export FOX_SETTINGS_ROOT_DIRECTORY="/persist"
+	export FOX_MAINTAINER_PATCH_VERSION="$(date +%Y%m%d%H%M)"
+	export FOX_ALLOW_EARLY_SETTINGS_LOAD=1
+	
+	# Disable OrangeFox settings reset during zip flash
+	export FOX_RESET_SETTINGS="disabled"
+	
+	# Specify the exact path to the recovery partition so A/B zip installer stops patching boot!
+	export FOX_RECOVERY_INSTALL_PARTITION="/dev/block/bootdevice/by-name/recovery"
+	
+	# Disable auto-reboot to allow TWRP to save volatile settings properly
+	export FOX_INSTALLER_DISABLE_AUTOREBOOT="1"
+
+	# Auto-disable vbmeta AVB2 verification after ROM flash
+	# Without this, ROM writes fresh vbmeta with verification ON,
+	# DFE modifies vendor_boot → verified boot fails → fastboot!
+	export OF_SUPPORT_VBMETA_AVB2_PATCHING=1
+else
+	echo "I: vendorsetup.sh skipped; device mismatch or environment issue."
+fi
