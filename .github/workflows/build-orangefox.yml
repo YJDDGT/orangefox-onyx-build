@@ -167,7 +167,42 @@ jobs:
           if-no-files-found: ignore
 
       # ============================================================
-      # Step 7: Build summary
+      # Step 7: Create GitHub Release (only on success)
+      # ============================================================
+      - name: Create GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: OrangeFox R12.1 onyx #${{ github.run_number }}
+          body: |
+            ## 🦊 OrangeFox Recovery — Redmi Turbo 4 Pro (onyx)
+
+            | Item | Value |
+            |------|-------|
+            | Build | #${{ github.run_number }} |
+            | SOC | Qualcomm SM8735 (Snapdragon 8s Gen 3) |
+            | Kernel | 6.6.77 (prebuilt) |
+            | A/B | Virtual A/B, dedicated recovery partition |
+            | Language | 简体中文 (zh_CN) |
+            | Font | MiSans |
+            | Timezone | CST-8 (UTC+8) |
+
+            ### Flash
+            ```
+            fastboot flash recovery recovery.img
+            ```
+          files: |
+            orangefox/out/target/product/onyx/recovery.img
+            orangefox/out/target/product/onyx/OrangeFox*.zip
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================================
+      # Step 8: Build summary
       # ============================================================
       - name: Build summary
         if: always()
