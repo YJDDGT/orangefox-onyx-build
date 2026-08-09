@@ -189,7 +189,7 @@ else
 endif
 
 TW_USE_SERIALNO_PROPERTY_FOR_DEVICE_ID := true
-TW_LOAD_VENDOR_MODULES := "adsp_loader_dlkm.ko nt38771_touch.ko nxp-nci.ko xiaomi_touch.ko phy-msm-m31-eusb2.ko phy-msm-snps-eusb2.ko phy-msm-ssusb-qmp.ko repeater-qti-pmic-eusb2.ko wcd_usbss_i2c.ko dwc3-msm.ko xhci-sideband.ko repeater.ko phy-generic.ko"
+TW_LOAD_VENDOR_MODULES := "panel_event_notifier.ko adsp_loader_dlkm.ko aw8697-haptic.ko si_haptic.ko gpr_dlkm.ko q6_notifier_dlkm.ko q6_pdr_dlkm.ko qcom_glink.ko qcom_glink_smem.ko qcom_pil_info.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_ramdump.ko qcom_smd.ko qcom_sysmon.ko qmi_helpers.ko rproc_qcom_common.ko snd_event_dlkm.ko spf_core_dlkm.ko pdr_interface.ko nt38771_touch.ko xiaomi_touch.ko nxp-nci.ko phy-msm-m31-eusb2.ko phy-msm-snps-eusb2.ko phy-msm-ssusb-qmp.ko repeater-qti-pmic-eusb2.ko wcd_usbss_i2c.ko dwc3-msm.ko xhci-sideband.ko repeater.ko phy-generic.ko"
 TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
 TW_CUSTOM_CPU_TEMP_PATH := "/sys/class/thermal/thermal_zone48/temp"
 TW_BATTERY_SYSFS_WAIT_SECONDS := 6
